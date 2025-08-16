@@ -4,11 +4,74 @@ import pandas as pd
 import time
 import random
 import re
-
-header = { 
-    'User-Agent': 'Mozzila/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    'Accept-Language': 'en-US,en,q=0.9)',
+import headers
+header = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-User': '?1',
+    'Sec-Fetch-Dest': 'document',
+    'Cache-Control': 'max-age=0',
+    'Referer': 'https://www.google.com/',
 }
+# header = { 
+#     'User-Agent': 'Mozzila/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+#     'Accept-Language': 'en-US,en,q=0.9)',
+# }
+property_meta = ['taxableLandValue', 'taxableImprovementValue', 'yearBuilt', 'streetAddress', 'listingPrice', 'postalCode']
+column_order = [
+    headers.CsvHeaders.PRICE, 
+    headers.CsvHeaders.TAX_PRICE, 
+    headers.CsvHeaders.TAX_YEAR,
+    headers.CsvHeaders.FULL_STREET_ADDRESS,
+    headers.CsvHeaders.STREET,
+    headers.CsvHeaders.CITY,
+    headers.CsvHeaders.STATE,
+    headers.CsvHeaders.ZIP_CODE,
+    headers.CsvHeaders.BEDS,
+    headers.CsvHeaders.BATHS,
+    headers.CsvHeaders.SQFT,
+    headers.CsvHeaders.STATUS,
+    headers.CsvHeaders.DAYS_ON,
+    headers.CsvHeaders.COUNTY,
+]
+
+def scrape_redfin_house(property_values, url):
+    """Scrape house"""
+    try:
+        response = requests.get(url, headers=header)
+#        with open('error_response.txt', 'w') as text_file:
+#                text_file.write(response.text)
+
+        found_data = {}
+        for meta in property_meta:
+            pat = re.compile(f'\\"({meta})\\\\\\":((\\w+)|\\\\\\"([\\w\\s]+))')
+            res_tax = pat.search(response.text)
+            if res_tax:
+                print(res_tax)
+                found_data[meta] = res_tax.group(3) if res_tax.group(3) else res_tax.group(4) if res_tax.group(4) else None 
+            else:
+                found_data[meta] = None
+        tax_land = int(found_data[property_meta[0]]) if found_data[property_meta[0]] else 0  
+        tax_improve = int(found_data[property_meta[1]]) if found_data[property_meta[1]] else 0
+        tax_assessed = tax_land + tax_improve
+        property_values[headers.CsvHeaders.TAX_PRICE] = tax_assessed
+#        property_values['year_built'] = found_data['yearBuilt']
+        property_values[headers.CsvHeaders.PRICE] = found_data['listingPrice'] if found_data['listingPrice'] else None
+        property_values[headers.CsvHeaders.STREET] = found_data['streetAddress']
+#        if found_data['street']:
+#            format_street = found_data['street'].replace(' ', '-')
+#            with open(f'response-houses/{format_street}.txt', 'w') as text_file:
+#                text_file.write(response.text)
+        
+    except Exception as e:
+        print(f"Error scraping house: {e}")
+        return property_values 
 
 def scrape_redfin_search_page(url):
     """Scrape a single page"""
@@ -16,34 +79,31 @@ def scrape_redfin_search_page(url):
         response = requests.get(url, headers=header)
         response.raise_for_status()
 
-        # print(f"response {url}: {response.text}")
         soup = BeautifulSoup(response.text, 'html.parser')
         properties = []
 
-        # print(f"response {url}: {soup.prettify()}")
-        with open('response.txt', 'w') as text_file:
-            text_file.write(soup.prettify())
-        property_cards = soup.find_all("div", class_="bp-mobileListHomeCard")
+        # with open('response.txt', 'w') as text_file:
+        #    text_file.write(soup.prettify())
+        property_cards = soup.find_all("div", class_="HomeCardContainer")
         for card in property_cards:
             property_data = {}
 
             if card.find('div', class_='InlineResultStaticPlacement__adContainer'):
                 continue
 
-            property_data['address'] = card.find('div', class_ ='bp-Homecard__Address').get_text(strip=True) if card.find('div', class_='bp-Homecard__Address') else None
-            property_data['price'] = card.find('span', class_='bp-Homecard__Price--value').get_text(strip=True) if card.find('span', class_='bp-Homecard__Price--value') else None
-
+            property_data[headers.CsvHeaders.FULL_STREET_ADDRESS] = card.find('div', class_ ='bp-Homecard__Address').get_text(strip=True) if card.find('div', class_='bp-Homecard__Address') else None
+            
             details = card.find('div', class_='bp-Homecard__Stats')
             if details:
                 bed_text = details.find('span', class_='bp-Homecard__Stats--beds').get_text(strip=True)
                 bath_text = property_data['baths'] = details.find('span', class_='bp-Homecard__Stats--baths').get_text(strip=True)
-                property_data['baths'] = re.sub("bed(s)*", "", bed_text)
-                property_data['beds'] = re.sub("bath(s)*", "", bath_text)
-                property_data['sqft'] = details.find('span', class_='bp-Homecard__LockedStat--value').get_text(strip=True).replace(',', '')
+                property_data[headers.CsvHeaders.BEDS] = re.sub("bed(s)*", "", bed_text) 
+                property_data[headers.CsvHeaders.BATHS] = re.sub("bath(s)*", "", bath_text)
+                property_data[headers.CsvHeaders.SQFT] = details.find('span', class_='bp-Homecard__LockedStat--value').get_text(strip=True).replace(',', '')
             else:
-                property_data['beds'] = None
-                property_data['baths'] = None
-                property_data['sqft'] = None
+                property_data[headers.CsvHeaders.BEDS] = None
+                property_data[headers.CsvHeaders.BATHS] = None
+                property_data[headers.CsvHeaders.SQFT] = None
             p = re.compile('(https:\\/\\/[a-zA-Z0-9\\.\\/\\-]+)')
             script_text = card.find('script').get_text(strip=True)
             if script_text :
@@ -55,6 +115,11 @@ def scrape_redfin_search_page(url):
             else:
                 property_data['url'] = None
             properties.append(property_data)
+
+        for property in properties:
+            scrape_redfin_house(property, property['url']) if property['url'] else None
+            time.sleep(random.uniform(1, 3))
+
         return properties
     except Exception as e:
         print(f"Error scraping page: {e}")
@@ -74,12 +139,22 @@ def scrape_redfin_area(search_url, pages=1):
     return all_properties;
 
 if __name__ == "__main__" :
-    search_url = "https://www.redfin.com/city/17151/CA/San-Francisco"
+    start = time.clock_gettime(1)
+#     search_url = "https://www.redfin.com/city/17151/CA/San-Francisco"
+# https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,school-types=elementary+middle+high/page-3
+# https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,school-types=elementary+middle+high
+    search_url = "https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,school-types=elementary+middle+high"
 
-    properties = scrape_redfin_area(search_url, pages=3)
+    properties = scrape_redfin_area(search_url, pages=1)
 
     df = pd.DataFrame(properties)
     print(f"Scraped {len(df)} properties")
+    df = df[column_order]
     df.to_csv('redfin_properties.csv', index=False)
-
+#    search_url = "https://www.redfin.com/VA/Herndon/13922-Aviation-Pl-20171/home/191266157"
+#    property_data = {}
+#    scrape_redfin_house(property_data, search_url)
+    end = time.clock_gettime(1)
+    print(end - start)
+    # scrape_redfin_house({}, "https://www.redfin.com/CA/San-Francisco/174-15th-Ave-94118/home/604751")
  
