@@ -5,6 +5,8 @@ import time
 import random
 import re
 import headers
+import csv
+
 header = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
@@ -23,23 +25,26 @@ header = {
 #     'User-Agent': 'Mozzila/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
 #     'Accept-Language': 'en-US,en,q=0.9)',
 # }
-property_meta = ['taxableLandValue', 'taxableImprovementValue', 'yearBuilt', 'streetAddress', 'listingPrice', 'postalCode']
+
+csv_headers = headers.CsvHeaders
+json_props = headers.JsonProperties
+
+# property_meta = ['taxableLandValue', 'taxableImprovementValue', 'yearBuilt', 'streetAddress', 'listingPrice', 'postalCode']
 column_order = [
-    headers.CsvHeaders.PRICE, 
-    headers.CsvHeaders.TAX_PRICE, 
-    headers.CsvHeaders.TAX_YEAR,
-    headers.CsvHeaders.FULL_STREET_ADDRESS,
-    headers.CsvHeaders.STREET,
-    headers.CsvHeaders.CITY,
-    headers.CsvHeaders.STATE,
-    headers.CsvHeaders.ZIP_CODE,
-    headers.CsvHeaders.BEDS,
-    headers.CsvHeaders.BATHS,
-    headers.CsvHeaders.SQFT,
-    headers.CsvHeaders.STATUS,
-    headers.CsvHeaders.DAYS_ON,
-    headers.CsvHeaders.COUNTY,
+    csv_headers.PRICE.value, 
+    csv_headers.TAX_PRICE.value, 
+    csv_headers.TAX_YEAR.value,
+    csv_headers.FULL_STREET_ADDRESS.value,
+    csv_headers.STREET.value,
+    csv_headers.CITY.value,
+    csv_headers.STATE.value,
+    csv_headers.ZIP_CODE.value,
+    csv_headers.BEDS.value,
+    csv_headers.BATHS.value,
+    csv_headers.SQFT.value,
+    csv_headers.COUNTY.value,
 ]
+
 
 def scrape_redfin_house(property_values, url):
     """Scrape house"""
@@ -49,26 +54,30 @@ def scrape_redfin_house(property_values, url):
 #                text_file.write(response.text)
 
         found_data = {}
-        for meta in property_meta:
-            pat = re.compile(f'\\"({meta})\\\\\\":((\\w+)|\\\\\\"([\\w\\s]+))')
+        for prop in list(json_props):
+            pat = re.compile(f'\\"({prop.value})\\\\\\":((\\w+)|\\\\\\"([\\w\\s]+))')
             res_tax = pat.search(response.text)
             if res_tax:
-                print(res_tax)
-                found_data[meta] = res_tax.group(3) if res_tax.group(3) else res_tax.group(4) if res_tax.group(4) else None 
+                found_data[prop.value] = res_tax.group(3) if res_tax.group(3) else res_tax.group(4) if res_tax.group(4) else None 
             else:
-                found_data[meta] = None
-        tax_land = int(found_data[property_meta[0]]) if found_data[property_meta[0]] else 0  
-        tax_improve = int(found_data[property_meta[1]]) if found_data[property_meta[1]] else 0
+                found_data[prop.value] = None
+        tax_land = int(found_data[json_props.TAX_LAND.value]) if found_data[json_props.TAX_LAND.value] else 0  
+        tax_improve = int(found_data[json_props.TAX_IMPROVEMENT.value]) if found_data[json_props.TAX_IMPROVEMENT.value] else 0
         tax_assessed = tax_land + tax_improve
-        property_values[headers.CsvHeaders.TAX_PRICE] = tax_assessed
-#        property_values['year_built'] = found_data['yearBuilt']
-        property_values[headers.CsvHeaders.PRICE] = found_data['listingPrice'] if found_data['listingPrice'] else None
-        property_values[headers.CsvHeaders.STREET] = found_data['streetAddress']
+        property_values[csv_headers.TAX_PRICE.value] = tax_assessed
+        property_values[csv_headers.YEAR_BUILT.value] = found_data[json_props.YEAR_BUILT.value] if found_data[json_props.YEAR_BUILT.value] else None
+        property_values[csv_headers.PRICE.value] = int(found_data[json_props.PRICE.value]) if found_data[json_props.PRICE.value] else None
+        property_values[csv_headers.STREET.value] = found_data[json_props.STREET.value] if found_data[json_props.STREET.value] else None
+        property_values[csv_headers.TAX_YEAR.value] = found_data[json_props.TAX_YEAR.value] if found_data[json_props.TAX_YEAR.value] else None
+        property_values[csv_headers.CITY.value] = found_data[json_props.CITY.value] if found_data[json_props.CITY.value] else None
+        property_values[csv_headers.STATE.value] = found_data[json_props.STATE.value] if found_data[json_props.STATE.value] else None
+        property_values[csv_headers.ZIP_CODE.value] = found_data[json_props.ZIP_CODE.value] if found_data[json_props.ZIP_CODE.value] else None
+        property_values[csv_headers.COUNTY.value] = found_data[json_props.COUNTY.value] if found_data[json_props.COUNTY.value] else None
 #        if found_data['street']:
 #            format_street = found_data['street'].replace(' ', '-')
 #            with open(f'response-houses/{format_street}.txt', 'w') as text_file:
 #                text_file.write(response.text)
-        
+
     except Exception as e:
         print(f"Error scraping house: {e}")
         return property_values 
@@ -91,19 +100,19 @@ def scrape_redfin_search_page(url):
             if card.find('div', class_='InlineResultStaticPlacement__adContainer'):
                 continue
 
-            property_data[headers.CsvHeaders.FULL_STREET_ADDRESS] = card.find('div', class_ ='bp-Homecard__Address').get_text(strip=True) if card.find('div', class_='bp-Homecard__Address') else None
+            property_data[csv_headers.FULL_STREET_ADDRESS.value] = card.find('div', class_ ='bp-Homecard__Address').get_text(strip=True) if card.find('div', class_='bp-Homecard__Address') else None
             
             details = card.find('div', class_='bp-Homecard__Stats')
             if details:
                 bed_text = details.find('span', class_='bp-Homecard__Stats--beds').get_text(strip=True)
                 bath_text = property_data['baths'] = details.find('span', class_='bp-Homecard__Stats--baths').get_text(strip=True)
-                property_data[headers.CsvHeaders.BEDS] = re.sub("bed(s)*", "", bed_text) 
-                property_data[headers.CsvHeaders.BATHS] = re.sub("bath(s)*", "", bath_text)
-                property_data[headers.CsvHeaders.SQFT] = details.find('span', class_='bp-Homecard__LockedStat--value').get_text(strip=True).replace(',', '')
+                property_data[csv_headers.BEDS.value] = re.sub("bed(s)*", "", bed_text) 
+                property_data[csv_headers.BATHS.value] = re.sub("bath(s)*", "", bath_text)
+                property_data[csv_headers.SQFT.value] = details.find('span', class_='bp-Homecard__LockedStat--value').get_text(strip=True).replace(',', '')
             else:
-                property_data[headers.CsvHeaders.BEDS] = None
-                property_data[headers.CsvHeaders.BATHS] = None
-                property_data[headers.CsvHeaders.SQFT] = None
+                property_data[csv_headers.BEDS.value] = None
+                property_data[csv_headers.BATHS.value] = None
+                property_data[csv_headers.SQFT.value] = None
             p = re.compile('(https:\\/\\/[a-zA-Z0-9\\.\\/\\-]+)')
             script_text = card.find('script').get_text(strip=True)
             if script_text :
@@ -120,6 +129,7 @@ def scrape_redfin_search_page(url):
             scrape_redfin_house(property, property['url']) if property['url'] else None
             time.sleep(random.uniform(1, 3))
 
+        properties = filter(lambda property : property[csv_headers.TAX_PRICE.value] * 1.05 >= property[csv_headers.PRICE.value] if property[csv_headers.TAX_PRICE.value] and property[csv_headers.PRICE.value] else False , properties) 
         return properties
     except Exception as e:
         print(f"Error scraping page: {e}")
@@ -145,12 +155,12 @@ if __name__ == "__main__" :
 # https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,school-types=elementary+middle+high
     search_url = "https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,school-types=elementary+middle+high"
 
-    properties = scrape_redfin_area(search_url, pages=1)
+    properties = scrape_redfin_area(search_url, pages=9)
 
     df = pd.DataFrame(properties)
     print(f"Scraped {len(df)} properties")
     df = df[column_order]
-    df.to_csv('redfin_properties.csv', index=False)
+    df.to_csv('redfin_properties.csv', index=False, quoting=csv.QUOTE_STRINGS)
 #    search_url = "https://www.redfin.com/VA/Herndon/13922-Aviation-Pl-20171/home/191266157"
 #    property_data = {}
 #    scrape_redfin_house(property_data, search_url)

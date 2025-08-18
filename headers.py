@@ -15,3 +15,18 @@ class CsvHeaders(Enum):
     STATUS = 'property_status'
     DAYS_ON = 'days_on_market'
     COUNTY = 'county'
+    YEAR_BUILT = 'year_built'
+
+# property_meta = ['taxableLandValue', 'taxableImprovementValue', 'yearBuilt', 'streetAddress', 'listingPrice', 'postalCode']
+class JsonProperties(Enum):
+    TAX_LAND = 'taxableLandValue'
+    TAX_IMPROVEMENT = 'taxableImprovementValue'
+    TAX_YEAR = 'rollYear'
+    YEAR_BUILT = 'yearBuilt'
+    STREET = 'streetAddress'
+    PRICE = 'listingPrice'
+    ZIP_CODE = 'postalCode'
+    STATE = 'state'
+    COUNTY = 'countyName'
+    CITY = 'city'
+
