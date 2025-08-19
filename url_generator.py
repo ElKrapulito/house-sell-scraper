@@ -1,13 +1,6 @@
-# https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,school-types=elementary+middle+high
-# https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,min-beds=1,max-beds=2,school-types=elementary+middle+high
-# https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,min-beds=1,max-beds=2,min-baths=2,school-types=elementary+middle+high
-# https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,min-beds=1,max-beds=2,min-baths=1,max-baths=2,school-types=elementary+middle+high
+import constants
 
-# fairfax county
-# arlington county
-# city of alexandria
-# loundon county
-# prince william county
+default_filters = constants.DEFAULT_FILTERS
 
 def generate_filter(index, combines, filters):
     filter = {}
@@ -29,29 +22,28 @@ def generate_filter(index, combines, filters):
     filters.append(filter2)
     return generate_filter(index + 1, combines, filters)
 
-def generate_url(url: str, filters: list):
+def make_url(url: str, filters: list):
     list_urls = []
     for filter in filters:
         beds = filter['beds']
         baths = filter['baths']
-        url_filter = f"min-baths={baths[0]},max-baths={baths[1]},min-beds={beds[0]},max-beds={beds[0]}"
-        new_url = f"{url},{url_filter}"
+        url_filter = f"/filter/{default_filters},min-baths={baths[0]},max-baths={baths[1]},min-beds={beds[0]},max-beds={beds[1]}"
+        new_url = f"{url}{url_filter}"
         list_urls.append(new_url)
     return list_urls
 
-def get_urls():
-    url = "https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,school-types=elementary+middle+high"
-    filters = []
+def generate_urls(list_urls):
     combines = [[1,2], [3,4], [5,6], [7,8]]
-    filters = generate_filter(0, combines, filters)
-    urls = generate_url(url, filters)
-    print(urls)
-    print(len(urls))
+    filters = generate_filter(0, combines, [])
+    new_list = []
+    for url in list_urls:
+        urls = make_url(url, filters)
+        new_list = new_list + urls
+    return new_list
+
+def get_default_urls():
+    list_urls = constants.URL_LIST    
+    return generate_urls(list_urls)
 
 if __name__ == "__main__":
-    list_urls = [
-        "https://www.redfin.com/city/250/VA/Alexandria", 
-        "https://www.redfin.com/county/2965/VA/Fairfax-County/filter/sort=lo-days,property-type=house+townhouse,school-types=elementary+middle+high",
-        "https://www.redfin.com/city/250/VA/Alexandria"
-    ]
-    get_urls()
+    print(get_default_urls())
