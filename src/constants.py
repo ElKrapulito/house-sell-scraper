@@ -17,10 +17,4 @@ REQUEST_HEADER = {
 #     'User-Agent': 'Mozzila/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
 #     'Accept-Language': 'en-US,en,q=0.9)',
 # }
-URL_LIST = [
-        "https://www.redfin.com/city/250/VA/Alexandria", 
-        "https://www.redfin.com/county/2965/VA/Fairfax-County",
-        "https://www.redfin.com/county/2943/VA/Arlington-County",
-        "https://www.redfin.com/county/2989/VA/Loudoun-County",
-        "https://www.redfin.com/county/3009/VA/Prince-William-County"
-]
+

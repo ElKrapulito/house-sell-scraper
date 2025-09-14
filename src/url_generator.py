@@ -1,4 +1,5 @@
-import constants
+import config
+import src.constants as constants
 
 default_filters = constants.DEFAULT_FILTERS
 
@@ -33,7 +34,7 @@ def make_url(url: str, filters: list):
     return list_urls
 
 def generate_urls(list_urls):
-    combines = [[1,2], [3,4], [5,6], [7,8]]
+    combines = [[1,2], [3,4], [5,6], [7,8], [9,10]]
     filters = generate_filter(0, combines, [])
     new_list = []
     for url in list_urls:
@@ -42,7 +43,7 @@ def generate_urls(list_urls):
     return new_list
 
 def get_default_urls():
-    list_urls = constants.URL_LIST    
+    list_urls = config.URLS
     return generate_urls(list_urls)
 
 if __name__ == "__main__":
