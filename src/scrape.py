@@ -50,6 +50,8 @@ def map_housedb_to_scrape_house(house):
     return property
 
 def map_to_housedb(property):
+    # print property information before saving
+    print(f"Mapping property: {property}")
     house = {}
     house['price'] = property[csv_headers.PRICE.value]
     house['taxAssessed'] = property[csv_headers.TAX_PRICE.value] 
@@ -63,6 +65,7 @@ def map_to_housedb(property):
     house['bathCount'] = property[csv_headers.BATHS.value]
     house['sqft'] = property[csv_headers.SQFT.value]
     house['county'] = property[csv_headers.COUNTY.value]
+    house['url'] = property[csv_headers.URL.value] if csv_headers.URL.value in property else ''
     return house
 
 def save_property(property):
@@ -213,7 +216,7 @@ def scrape_redfin_area(list_urls: list):
     return all_properties;
 
 def main():
-    start = time.clock_gettime(1)
+    start = time.clock_gettime(time.CLOCK_REALTIME)
     list_urls = url_generator.get_default_urls() 
 
     properties = scrape_redfin_area(list_urls[:3])
@@ -222,7 +225,7 @@ def main():
     print(f"Scraped {len(df)} properties")
     df = df[column_order]
     df.to_csv('redfin_properties.csv', index=False, quoting=csv.QUOTE_STRINGS)
-    end = time.clock_gettime(1)
+    end = time.clock_gettime(time.CLOCK_REALTIME)
     print(end - start)
 
 

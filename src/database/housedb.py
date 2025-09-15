@@ -13,10 +13,10 @@ class HouseDatabase:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS houses (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    fullAddress TEXT NOT NULL,
+                    fullAddress TEXT NULL,
                     address TEXT NOT NULL,
                     city TEXT NOT NULL,
-                    zipCode TEXT NOT NULL,
+                    zipCode TEXT NULL,
                     county TEXT NOT NULL,
                     state TEXT NOT NULL,
                     price DECIMAL NOT NULL,
@@ -42,7 +42,7 @@ class HouseDatabase:
         Returns:
             int: The ID of the inserted record
         """
-        required_fields = ['fullAddress', 'address', 'city', 'zip_code', 'county', 'state', 'price', 'taxAssessed', 'taxYear', 'url']
+        required_fields = ['fullAddress', 'address', 'city', 'zipCode', 'county', 'state', 'price', 'taxAssessed', 'taxYear', 'url']
         
         # Validate required fields
         for field in required_fields:
@@ -64,11 +64,12 @@ class HouseDatabase:
                     bathCount,
                     bedsCount,
                     taxYear,
-                    sqft
+                    sqft,
+                    url
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
             ''', (
-                house_data['houseNumber'],
+                house_data['fullAddress'],
                 house_data['address'],
                 house_data['city'],
                 house_data['zipCode'],
