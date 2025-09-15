@@ -23,7 +23,7 @@ class HouseDatabase:
                     taxAssessed DECIMAL NOT NULL,
                     bathCount INTEGER NOT NULL DEFAULT 0, 
                     bedsCount INTEGER NOT NULL DEFAULT 0,
-                    taxYear TEXT NOT NULL,
+                    taxYear TEXT NULL,
                     sqft TEXT NOT NULL,
                     url TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -185,7 +185,7 @@ class HouseDatabase:
         """Get all houses with a specific zip code"""
         return self.search_houses(zipCode=zip_code)
     def get_house_by_address(self, address: str) -> Dict: 
-        house_list = self.search_houses(fullAddress=address)
+        house_list = self.search_houses(address=address)
         if house_list.__len__() <= 0:
             return {} 
         else:

@@ -76,7 +76,6 @@ def scrape_redfin_house(property_values, url):
     """Scrape house"""
     try:
         response = requests.get(url, headers=rh.generate_headers())
-
         with open('response.txt', 'w') as text_file:
             text_file.write(response.text)
 
@@ -122,7 +121,6 @@ def scrape_redfin_page(response):
                     continue
 
                 property_data[csv_headers.FULL_STREET_ADDRESS.value] = card.find('a', class_ ='bp-Homecard__Address').get_text(strip=True) if card.find('a', class_='bp-Homecard__Address') else None
-
                 details = card.find('div', class_='bp-Homecard__Stats')
                 if details:
                     bed_text = details.find('span', class_='bp-Homecard__Stats--beds').get_text(strip=True)
@@ -144,14 +142,15 @@ def scrape_redfin_page(response):
                         property_data[csv_headers.URL.value] = None
                 else:
                     property_data[csv_headers.URL.value] = None
-                house = db.get_house_by_address(property_data[csv_headers.FULL_STREET_ADDRESS.value])
+                # TODO: search for more values than just address
+                print(f"Searching in db for property data with street: {property_data[csv_headers.STREET.value]}")
+                house = db.get_house_by_address(property_data[csv_headers.STREET.value])
                 if len(house) <= 0 or house == None:
                     print("adding house to be scrapped")
                     properties.append(property_data)
                 else:
                     print("found existing home")
                     existing_properties.append(house)
-
             for property in properties:
                 scrape_redfin_house(property, property[csv_headers.URL.value]) if property[csv_headers.URL.value] else None
                 time.sleep(random.uniform(1, 3))
@@ -208,6 +207,7 @@ def scrape_redfin_area(list_urls: list):
     all_properties = []
     
     for url in list_urls:
+        print(f"Scrapping URL: {url}")
         properties = scrape_redfin_search_page(url)
         properties = filter_properties(properties) if properties else []
         all_properties.extend(properties)
@@ -218,8 +218,11 @@ def scrape_redfin_area(list_urls: list):
 def main():
     start = time.clock_gettime(time.CLOCK_REALTIME)
     list_urls = url_generator.get_default_urls() 
+    # Print number of URLs generated
+    print(f"Generated {len(list_urls)} URLs")
 
-    properties = scrape_redfin_area(list_urls[:3])
+    # TODO: remove this limit after testing
+    properties = scrape_redfin_area(list_urls[:2])
 
     df = pd.DataFrame(properties)
     print(f"Scraped {len(df)} properties")
