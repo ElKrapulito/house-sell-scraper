@@ -13,18 +13,18 @@ class HouseDatabase:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS houses (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    fullAddress TEXT NULL,
-                    address TEXT NOT NULL,
+                    fullAddress TEXT NOT NULL,
+                    address TEXT NULL,
                     city TEXT NOT NULL,
                     zipCode TEXT NULL,
                     county TEXT NOT NULL,
                     state TEXT NOT NULL,
-                    price DECIMAL NOT NULL,
-                    taxAssessed DECIMAL NOT NULL,
+                    price DECIMAL NULL,
+                    taxAssessed DECIMAL NULL,
                     bathCount INTEGER NOT NULL DEFAULT 0, 
                     bedsCount INTEGER NOT NULL DEFAULT 0,
                     taxYear TEXT NULL,
-                    sqft TEXT NOT NULL,
+                    sqft TEXT NULL,
                     url TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -46,7 +46,9 @@ class HouseDatabase:
         
         # Validate required fields
         for field in required_fields:
-            if field not in house_data:
+             if field not in house_data:
+                with open('house-not-saved.txt', 'w') as text_file:
+                    text_file.write(str(house_data))
                 raise ValueError(f"Missing required field: {field}")
         
         with sqlite3.connect(self.db_name) as conn:
@@ -67,7 +69,7 @@ class HouseDatabase:
                     sqft,
                     url
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 house_data['fullAddress'],
                 house_data['address'],
@@ -172,18 +174,19 @@ class HouseDatabase:
             cursor.execute('DELETE FROM houses WHERE id = ?', (house_id,))
             conn.commit()
             return cursor.rowcount > 0
-    
+
     def get_houses_by_city(self, city: str) -> List[Dict]:
         """Get all houses in a specific city"""
         return self.search_houses(city=city)
-    
+
     def get_houses_by_state(self, state: str) -> List[Dict]:
         """Get all houses in a specific state"""
         return self.search_houses(state=state)
-    
+
     def get_houses_by_zip_code(self, zip_code: str) -> List[Dict]:
         """Get all houses with a specific zip code"""
         return self.search_houses(zipCode=zip_code)
+
     def get_house_by_address(self, address: str) -> Dict: 
         house_list = self.search_houses(address=address)
         if house_list.__len__() <= 0:

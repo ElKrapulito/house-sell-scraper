@@ -11,6 +11,7 @@ import src.url_generator as url_generator
 import src.database.housedb as hdb
 import src.request_headers as rh
 import config as cg
+import datetime
 
 header = constants.REQUEST_HEADER
 csv_headers = headers.CsvHeaders
@@ -76,7 +77,7 @@ def scrape_redfin_house(property_values, url):
     """Scrape house"""
     try:
         response = requests.get(url, headers=rh.generate_headers())
-        with open('response.txt', 'w') as text_file:
+        with open('house-response.txt', 'w') as text_file:
             text_file.write(response.text)
 
         found_data = {}
@@ -109,6 +110,10 @@ def scrape_redfin_page(response):
             soup = BeautifulSoup(response.text, 'html.parser')
             properties = []
             existing_properties = []
+            
+            with open('main-response.txt', 'w') as text_file:
+                text_file.write(response.text)
+
 
             property_cards = soup.find_all("div", class_="HomeCardContainer")
             if not property_cards:
@@ -120,7 +125,7 @@ def scrape_redfin_page(response):
                 if card.find('div', class_='InlineResultStaticPlacement__adContainer'):
                     continue
 
-                property_data[csv_headers.FULL_STREET_ADDRESS.value] = card.find('a', class_ ='bp-Homecard__Address').get_text(strip=True) if card.find('a', class_='bp-Homecard__Address') else None
+                property_data[csv_headers.FULL_STREET_ADDRESS.value] = card.find('div', class_ ='bp-Homecard__Address').get_text(strip=True) if card.find('div', class_='bp-Homecard__Address') else None
                 details = card.find('div', class_='bp-Homecard__Stats')
                 if details:
                     bed_text = details.find('span', class_='bp-Homecard__Stats--beds').get_text(strip=True)
@@ -143,8 +148,7 @@ def scrape_redfin_page(response):
                 else:
                     property_data[csv_headers.URL.value] = None
                 # TODO: search for more values than just address
-                print(f"Searching in db for property data with street: {property_data[csv_headers.STREET.value]}")
-                house = db.get_house_by_address(property_data[csv_headers.STREET.value])
+                house = db.get_house_by_address(property_data[csv_headers.FULL_STREET_ADDRESS.value].split(',')[0])
                 if len(house) <= 0 or house == None:
                     print("adding house to be scrapped")
                     properties.append(property_data)
@@ -222,12 +226,14 @@ def main():
     print(f"Generated {len(list_urls)} URLs")
 
     # TODO: remove this limit after testing
-    properties = scrape_redfin_area(list_urls[:2])
+    properties = scrape_redfin_area(list_urls[:1])
 
     df = pd.DataFrame(properties)
     print(f"Scraped {len(df)} properties")
     df = df[column_order]
-    df.to_csv('redfin_properties.csv', index=False, quoting=csv.QUOTE_STRINGS)
+
+    date = datetime.date(2025, 1,1).today()
+    df.to_csv(f'reports/{date}-redfin-properties.csv', index=False, quoting=csv.QUOTE_STRINGS)
     end = time.clock_gettime(time.CLOCK_REALTIME)
     print(end - start)
 
