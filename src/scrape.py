@@ -237,7 +237,6 @@ def scrape_redfin_page(response):
                 else None
             )
             time.sleep(random.uniform(1, 3))
-            house = map_to_housedb(property)
             try:
                 save_property(property)
             except Exception as e:
@@ -330,9 +329,10 @@ def main():
     print(f"Scraped {len(df)} properties")
     df = df[column_order]
 
-    date = datetime.date(2025, 1, 1).today()
+    date = datetime.datetime(2025, 1, 1, 1, 1).today().isoformat()
+
     df.to_csv(
-        f"reports/{date}-redfin-properties.csv", index=False, quoting=csv.QUOTE_STRINGS
+        f"reports/redfin-properties-{date}.csv", index=False, quoting=csv.QUOTE_STRINGS
     )
     end = time.clock_gettime(time.CLOCK_REALTIME)
     print(end - start)
