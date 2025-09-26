@@ -1,4 +1,4 @@
-RATE = 1.5
+RATE = 1.05
 
 URLS = [
         "https://www.redfin.com/city/250/VA/Alexandria", 
