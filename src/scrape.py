@@ -74,9 +74,14 @@ def map_to_housedb(property):
     return house
 
 
-def save_property(property):
-    house = map_to_housedb(property)
+def save_property(prop):
+    house = map_to_housedb(prop)
     db.store_house(house)
+
+def update_property(prop):
+    house = map_to_housedb(prop)
+    is_updated = db.update_house(prop["db_id", house])
+    print(f"is updated: {is_updated}")
 
 
 def scrape_redfin_house(property_values, url):
@@ -210,43 +215,56 @@ def scrape_redfin_page(response):
                 property_data[csv_headers.BEDS.value] = None
                 property_data[csv_headers.BATHS.value] = None
                 property_data[csv_headers.SQFT.value] = None
-            p = re.compile("(https:\\/\\/[a-zA-Z0-9\\.\\/\\-]+)")
+            
+            http_pat = re.compile("(https:\\/\\/[a-zA-Z0-9\\.\\/\\-]+)")
+            price_pat = re.compile('"price":"([0-9]+)"')
+
             script_text = card.find("script").get_text(strip=True)
             if script_text:
-                result = p.search(script_text)
+                result = http_pat.search(script_text)
+                price_res = price_pat.search(script_text)
                 if result:
                     property_data[csv_headers.URL.value] = result.group(1)
                 else:
                     property_data[csv_headers.URL.value] = None
+                if price_res:
+                    property_data[csv_headers.PRICE.value] = price_res.group(1)
             else:
                 property_data[csv_headers.URL.value] = None
-            # TODO: search for more values than just address
-            house = db.get_house_by_address(
+
+            house = db.get_house_by_full_address(
                 property_data[csv_headers.FULL_STREET_ADDRESS.value].split(",")[0]
             )
-            if len(house) <= 0 or house == None:
+            should_update_house = house != None and int(property_data[csv_headers.PRICE.value]) != house["price"]
+            if should_update_house:
+                print(f"updating house: {property_data[csv_headers.FULL_STREET_ADDRESS.value]}")
+                property_data["db_id"] = house['id']
+            if len(house) <= 0 or house == None or should_update_house:
                 print("adding house to be scrapped")
                 properties.append(property_data)
             else:
                 print("found existing home")
                 existing_properties.append(house)
-        for property in properties:
+        for prop in properties:
             (
-                scrape_redfin_house(property, property[csv_headers.URL.value])
-                if property[csv_headers.URL.value]
+                scrape_redfin_house(prop, prop[csv_headers.URL.value])
+                if prop[csv_headers.URL.value]
                 else None
             )
             time.sleep(random.uniform(1, 3))
             try:
-                save_property(property)
+                if prop["db_id"]:
+                    update_property(prop)
+                else: 
+                    save_property(prop)
             except Exception as e:
                 print(f"error saving {e}")
 
-        print(existing_properties)
-        existing_properties = list(
-            map(map_housedb_to_scrape_house, existing_properties)
-        )
-        return properties + existing_properties
+        # print(existing_properties)
+        # existing_properties = list(
+        #     map(map_housedb_to_scrape_house, existing_properties)
+        # )
+        return properties
     except Exception as e:
         print(f"error scraping page: {e}")
         return []
@@ -318,25 +336,55 @@ def scrape_redfin_area(list_urls: list):
 
 
 def main():
-    start = time.clock_gettime(time.CLOCK_REALTIME)
+    start = time.perf_counter()
     list_urls = url_generator.get_default_urls()
-    # Print number of URLs generated
     print(f"Generated {len(list_urls)} URLs")
 
     properties = scrape_redfin_area(list_urls)
 
-    df = pd.DataFrame(properties)
-    print(f"Scraped {len(df)} properties")
-    df = df[column_order]
+    if len(properties) <= 0:
+        print("no new properties found")
+    else:
+        df = pd.DataFrame(properties)
+        print(f"Scraped {len(df)} properties")
+        df = df[column_order]
 
-    date = datetime.datetime(2025, 1, 1, 1, 1).today().isoformat()
+        date = datetime.datetime(2025, 1, 1).today().strftime("%Y%m%d_%H%M%S")
 
-    df.to_csv(
-        f"reports/redfin-properties-{date}.csv", index=False, quoting=csv.QUOTE_STRINGS
-    )
-    end = time.clock_gettime(time.CLOCK_REALTIME)
+        df.to_csv(
+            f"reports/redfin-properties-{date}.csv", index=False, quoting=csv.QUOTE_STRINGS
+        )
+    end = time.perf_counter()
     print(end - start)
 
+def load_page_into_text_file():
+    # list_urls = url_generator.get_default_urls()
+    # new_url = list_urls[0]
+    # response = requests.get(new_url, headers=rh.generate_headers())
+    # bs = BeautifulSoup(response.text, 'html.parser')
+    # with open("page-response.txt", "w") as text_file:
+    #     text_file.write(bs.prettify())
+    # text = ""
+    # with open("page-response.txt", "r") as text_file:
+    #     text = text_file.read()
+    # soup = BeautifulSoup(text, "html.parser")
+    # houses_content = soup.find_all('div', class_="bp-Homecard__Content")
+    # script_house = houses_content[0].find('script')
+    # pat = re.compile('"price":"([0-9]+)"')
+    # res = pat.search(script_house.get_text())
+    # print(res.group(0))
+
+    # response = requests.get("https://www.redfin.com/VA/Alexandria/1310-Seaport-Ln-22314/home/11864089", headers=rh.generate_headers())
+    # soup = BeautifulSoup(response.text, 'html.parser')
+    # with open("house-response.txt", "w") as text_file:
+    #     text_file.write(soup.prettify())
+    text = ''
+    with open('house-response.txt', 'r') as text_file:
+        text = text_file.read()
+
+    soup = BeautifulSoup(text, 'html.parser')
+    cards = soup.find_all('div', class_='PropertyHistoryEventRow')
+    print(str(cards[0].get_text(strip=True)))
 
 if __name__ == "__main__":
-    print("hello")
+   print("Hello there from scrape.py") 
